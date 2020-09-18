@@ -1,0 +1,35 @@
+{ "files": {
+    "elevator": [
+        "./output/elevator/-24/",
+        "./output/elevator/-9.5/",
+        "./output/elevator/1.5/"
+    ],
+    "flap": [
+        "./output/flaps/30/",
+        "./output/flaps/40/"
+    ],
+    "left-flaperon": [
+        "./output/left_flaperon/-51/"
+    ],
+    "right-flaperon": [
+        "./output/right_flaperon/-51/"
+    ],
+    "rudder": [
+        "./output/rudder/-35/",
+        "./output/rudder/4/",
+        "./output/rudder/-4/",
+        "./output/rudder/35/"
+    ],
+    "slats": [
+        "./output/slats/27.5/"
+    ],
+    "speedbrake": [
+        "./output/speedbrake/60/"
+    ]},
+  "base_file": "./output/base/",
+  "output_file": "./output/A-6E_vspaero.xml",
+  "stab_file": "./output/stab/",
+  "vsp3_file": "A-6.vsp3",
+  "manual_set": {"elevator":"Hstab"}
+}
+
