@@ -1,10 +1,9 @@
 import json, subprocess, sys
 from openvsp import vsp
 
-nproc = sys.argv[1]
-
 DRYRUN = False
 CLEANUP = False
+nproc = 1
 
 for arg in sys.argv:
     if arg.startswith('-'):
@@ -12,6 +11,8 @@ for arg in sys.argv:
             DRYRUN = True
         if 'c' in arg:
             CLEANUP = True
+    if arg.startswith('-j'):
+        nproc = int(arg[2:])
 
 mach = ""
 aoa = ""
@@ -62,7 +63,7 @@ configprops = {"base": {"NumberOfControlGroups": "0"}}
 postprops = {"Preconditioner": "Matrix",
              "Karman-Tsien Correction": "Y"}
 
-def generate(loc, vspfile, manual=False, name='', pos=0):
+def generate(loc, vspfile, name, manual=False, pos=0):
     # remove old outputs
     subprocess.run(['rm', loc + 'A-6_DegenGeom.csv'])
     if not DRYRUN:
@@ -82,6 +83,13 @@ def generate(loc, vspfile, manual=False, name='', pos=0):
             if vsp.GetParmName(p) == 'Y_Rotations':
                 vsp.SetParmVal(p, pos)
                 break
+            for n in vsp.GetAllSubSurfIDs():
+                vsp.DeleteSubSurf(n)
+    else:
+        for n in vsp.GetAllSubSurfIDs():
+            if name in n:
+                vsp.DeleteSubSurf(n)
+    
     print('witing out', loc + vspfile + '.csv')
     vsp.ComputeDegenGeom(vsp.SET_ALL, vsp.DEGEN_GEOM_CSV_TYPE)
     vsp.ClearVSPModel()
@@ -106,7 +114,7 @@ for case in ['base', 'stab']:
             bf.write(p + ' = ' + postprops[p] + ' \n')
 
     # re-generate DegenGeom
-    generate(params[case + '_file'], params['vsp3_file'])
+    generate(params[case + '_file'], params['vsp3_file'], case)
     
     # run the solver
     if not DRYRUN:
@@ -133,9 +141,9 @@ for run in params['files']:
                 of.write(t)
 
         if run not in params['manual_set'].keys():
-            generate(case, params['vsp3_file'])
+            generate(case, params['vsp3_file'], run)
         else:
-            generate(case, params['vsp3_file'], True, params['manual_set'][run],
+            generate(case, params['vsp3_file'], params['manual_set'][run], True,
                      case.split('/')[len(case.split('/')) - 2])
         
         if not DRYRUN:
