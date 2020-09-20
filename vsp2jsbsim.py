@@ -257,7 +257,6 @@ for datapoint in outputData.keys():
                 of.write('      <value>0</value> <value>0</value>\n')
             of.write('    </interpolate1d>\n')
             of.write('  </function>\n\n')
-            tuneprops.append('aero/tune/' + datapoint + '_' + run)
 
 # Stability - pretty much copypase of pinto's stab_format.py
 print('##### stability')
