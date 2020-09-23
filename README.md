@@ -11,12 +11,32 @@ parameter may be `Mach`, `AoA`, `beta`, `CL`, `CDo`, `CDi`, `CDtot`, `CS`,
 defaults to CL
 
 * runvsp.py
+options:
+	-jn
+		n is the number of threads passed to vspaero with the -omp setting
+	-wn
+		n is the number of wake iterations, defaults to 3
+	-d
+		dryrun, all files are generated but vspaero isn't executed
+	-c
+		cleanup, removes files that are later not used. Can save large amounts
+		of storage, .adb files in particular can make up ~90% of the used
+		space
+	-v
+		verbose, also writes out .vsp3 for every case
 generates .cvs, vspaero files and runs vspaero based on the parameters defined
-in `runparams.json`
+in `runparams.json` - see included example.
 requres vsp python API, see [this
-page](https://kontor.ca/post/how-to-compile-openvsp-python-api/) on how to
-compile create a venv with VSP api.
+page](https://kontor.ca/post/how-to-compile-openvsp-python-api/) on how to create a venv with VSP api.
+run.sh and runstab.sh need to be copied into the working directory for this
+script to work.
 
 * vsp2jsbsim.py
+options:
+	-wn
+		n is number of wake iterations, defaults to 3
+	--debug
+		enables a few extra print statements, nothing that particularly
+		benefits the user, used for development
 extracts the data from the .history files and formats them into jsbsim tables.
 Takes the same runparams.json as input

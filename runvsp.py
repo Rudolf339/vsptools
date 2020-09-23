@@ -3,16 +3,21 @@ from openvsp import vsp
 
 DRYRUN = False
 CLEANUP = False
+VERBOSE = False
 nproc = 1
-
+wake = 3
 for arg in sys.argv:
     if arg.startswith('-'):
         if 'd' in arg:
             DRYRUN = True
         if 'c' in arg:
             CLEANUP = True
+        if 'v' in arg:
+            VERBOSE = True
     if arg.startswith('-j'):
-        nproc = int(arg[2:])
+        nproc = arg[2:]
+    if arg.startswith('-w'):
+        wake = arg[2:]
 
 mach = ""
 aoa = ""
@@ -55,14 +60,16 @@ baseprops = {"Sref": "45.692500",
              "Symmetry": "NO",
              "FarDist": "-1.000000",
              "NumWakeNodes": "0",
-             "WakeIters": "3"
 }
-
+baseprops["WakeIters"] = str(wake)
 configprops = {"base": {"NumberOfControlGroups": "0"}}
 
 postprops = {"Preconditioner": "Matrix",
              "Karman-Tsien Correction": "Y"}
 
+def vprint(t):
+    if VERBOSE:
+        print(t)
 def generate(loc, vspfile, name, manual=False, pos=0):
     # remove old outputs
     subprocess.run(['rm', loc + 'A-6_DegenGeom.csv'])
@@ -83,26 +90,31 @@ def generate(loc, vspfile, name, manual=False, pos=0):
             if vsp.GetParmName(p) == 'Y_Rotations':
                 vsp.SetParmVal(p, pos)
                 break
-            for n in vsp.GetAllSubSurfIDs():
-                vsp.DeleteSubSurf(n)
+        for n in vsp.GetAllSubSurfIDs():
+            vsp.DeleteSubSurf(n)
     else:
         for n in vsp.GetAllSubSurfIDs():
-            if name in n:
+            if name != vsp.GetSubSurfName(n):
+                vprint(name + ' ' + vsp.GetSubSurfName(n))
                 vsp.DeleteSubSurf(n)
     
-    print('witing out', loc + vspfile + '.csv')
+    print('witing out', loc + vspfile[:-5] + '_DegenGeom.csv')
     vsp.ComputeDegenGeom(vsp.SET_ALL, vsp.DEGEN_GEOM_CSV_TYPE)
+    if VERBOSE:
+        vsp.WriteVSPFile(loc + 'A-6_' + name + '.vsp3')
     vsp.ClearVSPModel()
 
     if CLEANUP:
         print('cleaning...')
         fn = loc + 'A-6_DegenGeom.'
-        for ext in ['adb', 'adb.cases', 'csv',
-                    'fem', 'group.1', 'lod', 'polar']:
+        for ext in ['adb', 'adb.cases', 'fem', 'group.1', 'lod', 'polar']:
             subprocess.run(['rm', fn + ext])
 
 with open('./runparams.json', 'r') as p:
     params = json.loads(p.read())
+
+print('Dryrun:', DRYRUN)
+print('Cleanup:', CLEANUP)
 
 for case in ['base', 'stab']:
     with open(params[case + '_file'] + 'A-6_DegenGeom.vspaero', 'w') as bf:
@@ -121,9 +133,15 @@ for case in ['base', 'stab']:
         print('running: ' + case)
         subprocess.run(['date'])
         if case == 'base':
-            subprocess.run(['bash', './run.sh', params[case + '_file'], nproc], stdout=subprocess.DEVNULL)
+            if VERBOSE:
+                subprocess.run(['bash', './run.sh', params[case + '_file']])
+            else:
+                subprocess.run(['bash', './run.sh', params[case + '_file']], stdout=subprocess.DEVNULL)
         else:
-            subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc], stdout=subprocess.DEVNULL)
+            if VERBOSE:
+                subprocess.run(['bash', './runstab.sh', params[case + '_file']])
+            else:
+                subprocess.run(['bash', './runstab.sh', params[case + '_file']], stdout=subprocess.DEVNULL)
 
 for run in params['files']:
     for case in params['files'][run]:
@@ -149,7 +167,10 @@ for run in params['files']:
         if not DRYRUN:
             print('running: ' + case)
             subprocess.run(['date'])
-            subprocess.run(['bash', './run.sh', case], stdout=subprocess.DEVNULL)
+            if VERBOSE:
+                subprocess.run(['bash', './run.sh', case])
+            else:
+                subprocess.run(['bash', './run.sh', case], stdout=subprocess.DEVNULL)
 
 print('FINISHED')
 subprocess.run(['date'])

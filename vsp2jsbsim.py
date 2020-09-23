@@ -2,11 +2,6 @@
 
 import json, sys
 
-if '--debug' in sys.argv:
-    DEBUG = True
-else:
-    DEBUG = False
-
 
 def dprint(t, msg=''):
     if DEBUG:
@@ -39,6 +34,14 @@ data_order = ['Mach', 'AoA', 'beta', 'CL', 'CDo', 'CDi', 'CDtot', 'CS',
               'L/D', 'E', 'CFx', 'CFz', 'CFy', 'CMx', 'CMy', 'CMz', 'T/QS']
 input_txt_base = open(input_base + 'A-6_DegenGeom.history', 'r').readlines()
 input_txt = {}
+
+for arg in sys.argv:
+    if '--debug' in arg:
+        DEBUG = True
+    else:
+        DEBUG = False
+    if arg.startswith('-w'):
+        wake_iterations = arg[2:]
 
 for f in input_files.keys():
     input_txt[f] = {}
