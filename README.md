@@ -53,3 +53,10 @@ extracts the data from the .history files and formats them into jsbsim tables.
 Takes the same runparams.json as input
 
 It does not create the <axis> definitions, those need to be done manually
+
+# First time setup:
+- create .vsp3 model with all necessary control surfaces. control surface names should match the names in runparams['files'], except the ones specified in manual_set to be rotated instead of using subsurfaces.
+- set up folder structure and create initial .vspaero files (TODO: automate this part step based on runparams.json input)
+- write runparams.json
+
+After this, each time a new version is made of the .vsp3 file, the new tables may be calculated with runvsp.py, then the data extracted with vsp2jsbsim.py.
