@@ -5,10 +5,16 @@
 * plotdraw.py
 Generate a plot of the VSP .history output
 usage:
-`$ python3 plotdraw.py path/to/vsp.history parameter`
-parameter may be `Mach`, `AoA`, `beta`, `CL`, `CDo`, `CDi`, `CDtot`, `CS`,
-`L/D`, `E`, `CFx`, `CFz`, `CFy`, `CMx`, `CMz`, `CMy`, `T/QS`
-defaults to CL
+`$ python3 plotdraw.py path/to/vsp.history {options}`
+
+options:
+	-x
+		value may be `AoA`, `Mach`, `beta`
+		defaults to AoA
+	-y
+	    value may be `Mach`, `AoA`, `beta`, `CL`, `CDo`, `CDi`, `CDtot`, `CS`,
+		`L/D`, `E`, `CFx`, `CFz`, `CFy`, `CMx`, `CMz`, `CMy`, `T/QS`
+		defaults to CL
 
 * runvsp.py
 options:
