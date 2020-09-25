@@ -2,20 +2,37 @@ import matplotlib.pyplot as pyplot
 import numpy, sys
 
 wake_iterations = 3
-data_order = ['Mach', 'AoA', 'beta', 'CL', 'CDo', 'CDi', 'CDtot', 'CS',
-              'L/D', 'E', 'CFx', 'CFz', 'CFy', 'CMx', 'CMy', 'CMz', 'T/QS']
 
+TYPE = None
 with open(sys.argv[1]) as f:
     if '.history' in sys.argv[1]:
         TYPE = 'history'
+        data_order = ['Mach', 'AoA', 'beta', 'CL', 'CDo', 'CDi', 'CDtot', 'CS',
+                      'L/D', 'E', 'CFx', 'CFz', 'CFy', 'CMx', 'CMy', 'CMz', 'T/QS']
+        data = {'Mach': [], 'AoA': [], 'beta': [], 'CL': [], 'CDo': [], 'CDi': [],
+                'CDtot': [], 'CS': [],'L/D': [], 'E': [], 'CFx': [], 'CFz': [],
+                'CFy': [], 'CMx': [], 'CMy': [], 'CMz': [], 'T/QS': []}
+        X = 'AoA'
+        Y = 'CL'
     elif '.lod' in sys.argv[1]:
         TYPE = 'lod'
+        # data_order = ['wing', 'yavg', 'chord', 'Cl', 'Cd', 'Cs', 'compname',
+        #               'Mach', 'AoA', 'beta', 'CL', 'CD', 'CS',
+        #               'CFx', 'CFy', 'CFz', 'CMx', 'CMy', 'CMz']
+        data_order = ['wing', 'S', 'yavg', 'chord', 'v/vref',
+                'Cl', 'Cd', 'Cs', 'compname', 'Mach', 'AoA', 'beta',
+                'Cx', 'Cy', 'Cz', 'CMx', 'CMy', 'CMz']
+        data = {'wing': [], 'S': [], 'yavg': [], 'chord': [], 'v/vref': [],
+                'Cl': [], 'Cd': [], 'Cs': [], 'compname': [], 'Mach': [], 'AoA': [], 'beta': [],
+                'Cx': [], 'Cy': [], 'Cz': [], 'CMx': [], 'CMy': [], 'CMz': []}
+        X = 'yavg'
+        Y = 'Cl'
+    else:
+        print('Incorrect filetype')
+        exit()
     input_txt = f.readlines()
 
 db = []
-
-X = 'AoA'
-Y = 'CL'
 AOA = None
 MACH = None
 BETA = None
@@ -34,53 +51,61 @@ for arg in sys.argv:
     elif arg.startswith('-w'):
         WING = float(arg[2:])
 
-for i in range(len(input_txt)):
-    if input_txt[i].startswith('Solver Case:') and TYPE == 'history':
-        l = i + 2 + wake_iterations
-        t = input_txt[l].split(' ')
-        while '' in t:
-            t.remove('')
-        t.remove(t[0])
-        t[len(t) - 1] = t[len(t) - 1][:-1]
-        dataset = {}
-        for n in range(0, len(t)):
-            data_name = data_order[n]
-            dataset[data_name] = t[n]
-        db.append(dataset)
 
-data = {'Mach': [], 'AoA': [], 'beta': [], 'CL': [], 'CDo': [], 'CDi': [],
-        'CDtot': [], 'CS': [],'L/D': [], 'E': [], 'CFx': [], 'CFz': [],
-        'CFy': [], 'CMx': [], 'CMy': [], 'CMz': [], 'T/QS': []}
+def getdata(line):
+    while '  ' in line:
+        line = line.replace('  ', ' ')
+    line = line.split(' ')
+    line2 = []
+    for l in line:
+        if l != '':
+            line2.append(l)
+    return line2
+
+if TYPE == 'history':
+    for i in range(len(input_txt)):
+        if input_txt[i].startswith('Solver Case:'):
+            l = i + 2 + wake_iterations
+            t = input_txt[l].split(' ')
+            while '' in t:
+                t.remove('')
+            t.remove(t[0])
+            t[len(t) - 1] = t[len(t) - 1][:-1]
+            dataset = {}
+            for n in range(0, len(t)):
+                data_name = data_order[n]
+                dataset[data_name] = t[n]
+            db.append(dataset)
+else:
+    collect_w = False
+    collect_c = False
+    for l in input_txt:
+        if l == '\n':
+            collect_w = False
+            collect_c = False
+        elif collect_w:
+            dataset = {}
+            for n in range(len(getdata(l[:-2]))):
+                dataset[data_order[n]] = getdata(l)[n]
+            db.append(dataset)
+        elif l.startswith('   Wing'):
+            collect_w = True
+        elif l.startswith('Comp'):
+            collect_c = True
+
 for d in db:
     for k in d.keys():
         data[k].append(float(d[k]))
 
-aoa = set([a for a in data['AoA']])
-if AOA is not None:
-    if AOA in aoa:
-        aoa = set([AOA])
-    else:
-        print('Input AOA did not occure in input file')
-        exit
+def dataformater(inp, name):
+    arr = set([a for a in data[name]])
+    if inp is not None:
+        arr = set([inp])
+    return arr
 
-mach = set([a for a in data['Mach']])
-if MACH is not None:
-    if MACH in mach:
-        mach = set([MACH])
-    else:
-        print('Input Mach did not occure in input file')
-        exit
-
-beta = set([a for a in data['beta']])
-if BETA is not None:
-    if BETA in beta:
-        beta = set([BETA])
-    else:
-        print('Input beta did not occure in input file')
-        exit
-
-print(X, Y, AOA, MACH, BETA)
-print(aoa, mach, beta)
+cases = {'AoA': [AOA, None], 'beta': [BETA, None], 'Mach': [MACH, None], 'wing': [WING, None]}
+for c in cases.keys():
+    cases[c][1] = dataformater(cases[c][0], c)
 
 def plotter(first, second, name1, name2):
     for f in first:
@@ -88,18 +113,33 @@ def plotter(first, second, name1, name2):
             xres = []
             yres = []
             for i in range(len(data[X])):
-                if data[name1][i] == f and data[name2][i] == s:
+                try:
+                    if data[name2][i] == s or second == ['']:
+                        two_is_good = True
+                    else:
+                        two_is_good = False
+                except KeyError:
+                    two_is_good = True
+                if data[name1][i] == f and two_is_good:
                     yres.append(data[Y][i])
                     xres.append(data[X][i])
             if yres != []:
-                pyplot.plot(xres, yres, label=name1 + '=' + str(f)  + ' ' + name2 + '=' + str(s))
+                if second == [''] or len(second) == 1:
+                    pyplot.plot(xres, yres, label=name1 + '=' + str(f))
+                else:
+                    pyplot.plot(xres, yres, label=name1 + '=' + str(f)  + ' ' + name2 + '=' + str(s))
+        if second is ['']:
+            break
 
 if X == 'AoA':
-    plotter(mach, beta, 'Mach', 'beta')
+    plotter(cases['Mach'][1], cases['beta'][1], 'Mach', 'beta')
 elif X == 'Mach':
-    plotter(aoa, beta, 'AoA', 'beta')
+    plotter(cases['Aoa'][1], cases['beta'][1], 'AoA', 'beta')
 elif X == 'beta':
-    plotter(aoa, mach, 'AoA', 'Mach')
+    plotter(cases['Aoa'][1], cases['Mach'][1], 'AoA', 'Mach')
+elif TYPE == 'lod':
+    print('lod')
+    plotter(cases['wing'][1], [''], 'wing', '')
 
 pyplot.xlabel(X)
 pyplot.ylabel(Y)
