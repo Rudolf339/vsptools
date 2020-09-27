@@ -97,13 +97,17 @@ for d in db:
     for k in d.keys():
         data[k].append(float(d[k]))
 
+if TYPE == 'history':
+    cases = {'AoA': [AOA, None], 'beta': [BETA, None], 'Mach': [MACH, None]}
+elif TYPE == 'lod':
+    cases = {'AoA': [AOA, None], 'beta': [BETA, None], 'Mach': [MACH, None], 'wing': [WING, None]}
+
 def dataformater(inp, name):
     arr = set([a for a in data[name]])
     if inp is not None:
         arr = set([inp])
     return arr
 
-cases = {'AoA': [AOA, None], 'beta': [BETA, None], 'Mach': [MACH, None], 'wing': [WING, None]}
 for c in cases.keys():
     cases[c][1] = dataformater(cases[c][0], c)
 
