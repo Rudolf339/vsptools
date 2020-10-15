@@ -1,6 +1,9 @@
 import json, subprocess, sys
 from openvsp import vsp
 
+with open('./runparams.json', 'r') as p:
+    params = json.loads(p.read())
+
 DRYRUN = False
 CLEANUP = False
 VERBOSE = False
@@ -55,7 +58,7 @@ baseprops = {"Sref": "45.692500",
              "Vinf": "100.000000",
              "Rho": "0.002377",
              "ReCref": "10000000.000000",
-             "ClMax": "0.6",
+             "ClMax": params['CLmax']['base'],
              "MaxTurningAngle": "-1.000000",
              "Symmetry": "NO",
              "FarDist": "-1.000000",
@@ -72,6 +75,10 @@ def vprint(t):
         print(t)
 def generate(loc, vspfile, name, manual=False, pos=0):
     # remove old outputs
+    if name in params['surf_names']:
+        print('--', name)
+        name = params['surf_names'][name]
+        print(name)
     subprocess.run(['rm', loc + 'A-6_DegenGeom.csv'])
     if not DRYRUN:
         subprocess.run(['rm', loc + 'A-6_DegenGeom.history'])
@@ -95,8 +102,9 @@ def generate(loc, vspfile, name, manual=False, pos=0):
     else:
         for n in vsp.GetAllSubSurfIDs():
             if name != vsp.GetSubSurfName(n):
-                vprint(name + ' ' + vsp.GetSubSurfName(n))
                 vsp.DeleteSubSurf(n)
+            else:
+                vprint(name + ' ' + vsp.GetSubSurfName(n))
     
     print('witing out', loc + vspfile[:-5] + '_DegenGeom.csv')
     vsp.ComputeDegenGeom(vsp.SET_ALL, vsp.DEGEN_GEOM_CSV_TYPE)
@@ -109,9 +117,6 @@ def generate(loc, vspfile, name, manual=False, pos=0):
         fn = loc + 'A-6_DegenGeom.'
         for ext in ['adb', 'adb.cases', 'fem', 'group.1', 'lod', 'polar']:
             subprocess.run(['rm', fn + ext])
-
-with open('./runparams.json', 'r') as p:
-    params = json.loads(p.read())
 
 print('Dryrun:', DRYRUN)
 print('Cleanup:', CLEANUP)
@@ -150,7 +155,10 @@ for run in params['files']:
         vsp_txt = vsp_old.readlines()
         vsp_old.close()
         for entry in baseprops.keys():
-            output.append(entry + " = " + baseprops[entry] + " \n")
+            if entry == 'ClMax' and run in params['CLmax']:
+                output.append(entry + " = " + params['CLmax'][run] + " \n")
+            else:
+                output.append(entry + " = " + baseprops[entry] + " \n")
         for l in range(len(baseprops), len(vsp_txt)):
             output.append(vsp_txt[l])
 

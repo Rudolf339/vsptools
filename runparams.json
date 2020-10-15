@@ -4,7 +4,7 @@
         "./output/elevator/-9.5/",
         "./output/elevator/1.5/"
     ],
-    "flap": [
+    "flaps": [
         "./output/flaps/30/",
         "./output/flaps/40/"
     ],
@@ -30,6 +30,8 @@
   "output_file": "./output/A-6E_vspaero.xml",
   "stab_file": "./output/stab/",
   "vsp3_file": "A-6.vsp3",
-  "manual_set": {"elevator":"Hstab"}
+  "manual_set": {"elevator":"Hstab"},
+  "surf_names": {"left-flaperon":"flaperon", "right-flaperon":"flaperon"},
+  "CLmax": {"base":"0.9693", "flaps":"1.8396"}
 }
 
