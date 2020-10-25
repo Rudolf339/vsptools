@@ -139,14 +139,16 @@ for case in ['base', 'stab']:
         subprocess.run(['date'])
         if case == 'base':
             if VERBOSE:
-                subprocess.run(['bash', './run.sh', params[case + '_file']])
+                subprocess.run(['bash', './run.sh', params[case + '_file'], nproc])
             else:
-                subprocess.run(['bash', './run.sh', params[case + '_file']], stdout=subprocess.DEVNULL)
+                subprocess.run(['bash', './run.sh', params[case + '_file'], nproc],
+                               stdout=subprocess.DEVNULL)
         else:
             if VERBOSE:
-                subprocess.run(['bash', './runstab.sh', params[case + '_file']])
+                subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc])
             else:
-                subprocess.run(['bash', './runstab.sh', params[case + '_file']], stdout=subprocess.DEVNULL)
+                subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc],
+                               stdout=subprocess.DEVNULL)
 
 for run in params['files']:
     for case in params['files'][run]:
@@ -176,9 +178,9 @@ for run in params['files']:
             print('running: ' + case)
             subprocess.run(['date'])
             if VERBOSE:
-                subprocess.run(['bash', './run.sh', case])
+                subprocess.run(['bash', './run.sh', case, nproc])
             else:
-                subprocess.run(['bash', './run.sh', case], stdout=subprocess.DEVNULL)
+                subprocess.run(['bash', './run.sh', case, nproc], stdout=subprocess.DEVNULL)
 
 print('FINISHED')
 subprocess.run(['date'])

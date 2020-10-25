@@ -500,6 +500,8 @@ outputitems = {'forces': {'lift': 'CL', 'drag': 'CDtot', 'side': 'CS'},
 #         of.write('    </function>\n')
 #         of.write('  </axis>\n\n')
 
-of.write('</aerodynamics>\n')
+with open(params['axis_file'], 'r') as axis:
+    for l in axis.readlines():
+        of.write(l)
 of.close()
 od.close()
