@@ -39,7 +39,7 @@ for b in range(-5, 6):
 beta = beta + "10, 20"
 
 mach = '0.2, 0.5, 0.9'
-aoa = '-10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 40'
+aoa = '-10.0, -5.0, 0.001, 5.0, 10.0, 12, 13, 14, 15.0, 20.0,  25.0, 30.0, 40.0, 50.0, 60'
 beta = '-10.0, 0.0, 10.0'
 
 print('Mach:', mach + '!')
@@ -94,8 +94,9 @@ def generate(loc, vspfile, name, manual=False, pos=0):
         print(name)
         geom_id = vsp.FindGeomsWithName(name)[0]
         for p in vsp.GetGeomParmIDs(geom_id):
-            if vsp.GetParmName(p) == 'Y_Rotations':
-                vsp.SetParmVal(p, pos)
+            if vsp.GetParmName(p) == 'Y_Rotation':
+                print('rotating by', pos)
+                vsp.SetParmVal(p, float(pos))
                 break
         for n in vsp.GetAllSubSurfIDs():
             vsp.DeleteSubSurf(n)

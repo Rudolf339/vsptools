@@ -32,6 +32,7 @@
   "vsp3_file": "A-6.vsp3",
   "manual_set": {"elevator":"Hstab"},
   "surf_names": {"left-flaperon":"flaperon", "right-flaperon":"flaperon"},
-  "CLmax": {"base":"0.9693", "flaps":"1.8396"}
+  "CLmax": {"base":"0.9692", "flaps":"1.1131"},
+  "axis_file": "./axis_config.txt"
 }
 
