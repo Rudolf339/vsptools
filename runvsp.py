@@ -1,4 +1,4 @@
-import json, subprocess, sys
+import json, subprocess, sys, signal
 from openvsp import vsp
 
 with open('./runparams.json', 'r') as p:
@@ -9,6 +9,15 @@ CLEANUP = False
 VERBOSE = False
 nproc = 1
 wake = 3
+progress = {
+    "isused": "False",
+    "done": "False",
+    "dryrun": "False",
+    "verbose": "False",
+    "nproc": 2,
+    "wake": 3,
+    "completed": []
+}
 for arg in sys.argv:
     if arg.startswith('-'):
         if 'd' in arg:
@@ -21,6 +30,16 @@ for arg in sys.argv:
         nproc = arg[2:]
     if arg.startswith('-w'):
         wake = arg[2:]
+    if arg.startswith('--progressfile='):
+        progressfile = arg[15:]
+        with open(progressfile) as pf:
+            progress = json.loads(pf.read())
+            DRYRUN = progress['dryrun']
+            CLEANUP = progress['cleanup']
+            VERBOSE = progress['verbose']
+
+if progress['completed'] == []:
+    progress['done'] = False
 
 mach = ""
 aoa = ""
@@ -38,9 +57,9 @@ for b in range(-5, 6):
     beta += str(b) + ", "
 beta = beta + "10, 20"
 
-mach = '0.2, 0.5, 0.9'
-aoa = '-10.0, -5.0, 0.001, 5.0, 10.0, 12, 13, 14, 15.0, 20.0,  25.0, 30.0, 40.0, 50.0, 60'
-beta = '-10.0, 0.0, 10.0'
+# mach = '0.2, 0.5, 0.9'
+# aoa = '-10.0, -5.0, 0.001, 5.0, 10.0, 12, 13, 14, 15.0, 20.0,  25.0, 30.0, 40.0, 50.0, 60'
+# beta = '-10.0, 0.0, 10.0'
 
 print('Mach:', mach + '!')
 print('AoA:', aoa + '!')
@@ -70,6 +89,14 @@ configprops = {"base": {"NumberOfControlGroups": "0"}}
 postprops = {"Preconditioner": "Matrix",
              "Karman-Tsien Correction": "Y"}
 
+def interrupthandler(signal, frame):
+    if progress['isused']:
+        with open(progressfile, 'w+') as jf:
+            jf.write(json.dumps(progress, sort_keys=True, indent=4))
+        exit(0)
+
+signal.signal(signal.SIGINT, interrupthandler)
+
 def vprint(t):
     if VERBOSE:
         print(t)
@@ -81,9 +108,9 @@ def generate(loc, vspfile, name, manual=False, pos=0):
         print(name)
     subprocess.run(['rm', loc + 'A-6_DegenGeom.csv'])
     if not DRYRUN:
-        subprocess.run(['rm', loc + 'A-6_DegenGeom.history'])
-        if 'stab' in loc:
-            subprocess.run(['rm', loc + 'A-6_DegenGeom.stab'])
+       subprocess.run(['rm', loc + 'A-6_DegenGeom.history'])
+       if 'stab' in loc:
+           subprocess.run(['rm', loc + 'A-6_DegenGeom.stab'])
 
     # generate new vspaero input
     vsp.ReadVSPFile(vspfile)
@@ -123,65 +150,73 @@ print('Dryrun:', DRYRUN)
 print('Cleanup:', CLEANUP)
 
 for case in ['base', 'stab']:
-    with open(params[case + '_file'] + 'A-6_DegenGeom.vspaero', 'w') as bf:
-        for p in baseprops.keys():
-            bf.write(p + ' = ' + baseprops[p] + ' \n')
-        for p in configprops['base'].keys():
-            bf.write(p + ' = ' + configprops['base'][p] + ' \n')
-        for p in postprops.keys():
-            bf.write(p + ' = ' + postprops[p] + ' \n')
+    if params[case + '_file'] + params['vsp3_file'][:-5] not in progress['completed']:
+        with open(params[case + '_file'] + 'A-6_DegenGeom.vspaero', 'w') as bf:
+            for p in baseprops.keys():
+                bf.write(p + ' = ' + baseprops[p] + ' \n')
+            for p in configprops['base'].keys():
+                bf.write(p + ' = ' + configprops['base'][p] + ' \n')
+            for p in postprops.keys():
+                bf.write(p + ' = ' + postprops[p] + ' \n')
 
-    # re-generate DegenGeom
-    generate(params[case + '_file'], params['vsp3_file'], case)
-    
-    # run the solver
-    if not DRYRUN:
-        print('running: ' + case)
-        subprocess.run(['date'])
-        if case == 'base':
-            if VERBOSE:
-                subprocess.run(['bash', './run.sh', params[case + '_file'], nproc])
-            else:
-                subprocess.run(['bash', './run.sh', params[case + '_file'], nproc],
-                               stdout=subprocess.DEVNULL)
-        else:
-            if VERBOSE:
-                subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc])
-            else:
-                subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc],
-                               stdout=subprocess.DEVNULL)
+        # re-generate DegenGeom
+        generate(params[case + '_file'], params['vsp3_file'], case)
 
-for run in params['files']:
-    for case in params['files'][run]:
-        output = []
-        vsp_old = open(case + 'A-6_DegenGeom.vspaero', 'r')
-        vsp_txt = vsp_old.readlines()
-        vsp_old.close()
-        for entry in baseprops.keys():
-            if entry == 'ClMax' and run in params['CLmax']:
-                output.append(entry + " = " + params['CLmax'][run] + " \n")
-            else:
-                output.append(entry + " = " + baseprops[entry] + " \n")
-        for l in range(len(baseprops), len(vsp_txt)):
-            output.append(vsp_txt[l])
-
-        with open(case + 'A-6_DegenGeom.vspaero', 'w') as of:
-            for t in output:
-                of.write(t)
-
-        if run not in params['manual_set'].keys():
-            generate(case, params['vsp3_file'], run)
-        else:
-            generate(case, params['vsp3_file'], params['manual_set'][run], True,
-                     case.split('/')[len(case.split('/')) - 2])
-        
+        # run the solver
         if not DRYRUN:
             print('running: ' + case)
             subprocess.run(['date'])
-            if VERBOSE:
-                subprocess.run(['bash', './run.sh', case, nproc])
+            if case == 'base':
+                if VERBOSE:
+                    subprocess.run(['bash', './run.sh', params[case + '_file'], nproc])
+                else:
+                    subprocess.run(['bash', './run.sh', params[case + '_file'], nproc],
+                                   stdout=subprocess.DEVNULL)
             else:
-                subprocess.run(['bash', './run.sh', case, nproc], stdout=subprocess.DEVNULL)
+                if VERBOSE:
+                    subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc])
+                else:
+                    subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc],
+                                   stdout=subprocess.DEVNULL)
+            progress['cases'].append(params[case + '_file'] + params['vsp3_file'][:-5])
 
+for run in params['files']:
+    for case in params['files'][run]:
+        if case + params['vsp3_file'][:-5] not in progress['completed']:
+            output = []
+            vsp_old = open(case + 'A-6_DegenGeom.vspaero', 'r')
+            vsp_txt = vsp_old.readlines()
+            vsp_old.close()
+            for entry in baseprops.keys():
+                if entry == 'ClMax' and run in params['CLmax']:
+                    output.append(entry + " = " + params['CLmax'][run] + " \n")
+                else:
+                    output.append(entry + " = " + baseprops[entry] + " \n")
+            for l in range(len(baseprops), len(vsp_txt)):
+                output.append(vsp_txt[l])
+
+            with open(case + 'A-6_DegenGeom.vspaero', 'w') as of:
+                for t in output:
+                    of.write(t)
+
+            if run not in params['manual_set'].keys():
+                generate(case, params['vsp3_file'], run)
+            else:
+                generate(case, params['vsp3_file'], params['manual_set'][run],
+                         True, case.split('/')[len(case.split('/')) - 2])
+
+            if not DRYRUN:
+                print('running: ' + case)
+                subprocess.run(['date'])
+                if VERBOSE:
+                    subprocess.run(['bash', './run.sh', case, nproc])
+                else:
+                    subprocess.run(['bash', './run.sh', case, nproc],
+                                   stdout=subprocess.DEVNULL)
+
+            progress['cases'].append(params[case + '_file'] + params['vsp3_file'][:-5])
 print('FINISHED')
 subprocess.run(['date'])
+progress['done'] = True
+with open(progressfile, 'w+') as jf:
+    jf.write(json.dumps(progress, sort_keys=True, indent=4))
