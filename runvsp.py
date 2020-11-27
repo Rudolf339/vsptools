@@ -1,4 +1,4 @@
-import json, subprocess, sys, signal
+import json, subprocess, sys, signal, time
 from openvsp import vsp
 
 with open('./runparams.json', 'r') as p:
@@ -7,6 +7,8 @@ with open('./runparams.json', 'r') as p:
 DRYRUN = False
 CLEANUP = False
 VERBOSE = False
+HIGHRES = False
+MEDRES = False
 nproc = 1
 wake = 3
 progress = {
@@ -18,6 +20,7 @@ progress = {
     "wake": 3,
     "completed": []
 }
+progressfile = 'progress.json'
 for arg in sys.argv:
     if arg.startswith('-'):
         if 'd' in arg:
@@ -26,6 +29,10 @@ for arg in sys.argv:
             CLEANUP = True
         if 'v' in arg:
             VERBOSE = True
+        if 'h' in arg:
+            HIGHRES = True
+        if 'm' in arg:
+            MEDRES = True
     if arg.startswith('-j'):
         nproc = arg[2:]
     if arg.startswith('-w'):
@@ -34,9 +41,10 @@ for arg in sys.argv:
         progressfile = arg[15:]
         with open(progressfile) as pf:
             progress = json.loads(pf.read())
-            DRYRUN = progress['dryrun']
-            CLEANUP = progress['cleanup']
-            VERBOSE = progress['verbose']
+        DRYRUN = progress['dryrun']
+        CLEANUP = progress['cleanup']
+        VERBOSE = progress['verbose']
+        progress['isused'] = True
 
 if progress['completed'] == []:
     progress['done'] = False
@@ -57,9 +65,13 @@ for b in range(-5, 6):
     beta += str(b) + ", "
 beta = beta + "10, 20"
 
-# mach = '0.2, 0.5, 0.9'
-# aoa = '-10.0, -5.0, 0.001, 5.0, 10.0, 12, 13, 14, 15.0, 20.0,  25.0, 30.0, 40.0, 50.0, 60'
-# beta = '-10.0, 0.0, 10.0'
+if not HIGHRES:
+    mach = '0.2, 0.5, 0.9'
+    if MEDRES:
+        aoa = '-10.0, -5.0, 0.001, 5.0, 10.0, 15.0, 20.0,  25.0, 30.0, 40.0, 50.0, 60'
+    else:
+        aoa = '-10.0, 0.001, 10.0, 20.0, 30.0, 40.0, 50, 60'
+    beta = '-10.0, 0.0, 10.0'
 
 print('Mach:', mach + '!')
 print('AoA:', aoa + '!')
@@ -89,6 +101,17 @@ configprops = {"base": {"NumberOfControlGroups": "0"}}
 postprops = {"Preconditioner": "Matrix",
              "Karman-Tsien Correction": "Y"}
 
+est_baseprops = dict()
+for i in baseprops.keys():
+    if i == 'Mach':
+        est_baseprops['Mach'] = '0.4'
+    elif i == 'AoA':
+        est_baseprops['AoA'] = '5'
+    elif i  == 'Beta':
+        est_baseprops['Beta'] = '0'
+    else:
+        est_baseprops[i] = baseprops[i]
+
 def interrupthandler(signal, frame):
     if progress['isused']:
         with open(progressfile, 'w+') as jf:
@@ -103,9 +126,7 @@ def vprint(t):
 def generate(loc, vspfile, name, manual=False, pos=0):
     # remove old outputs
     if name in params['surf_names']:
-        print('--', name)
         name = params['surf_names'][name]
-        print(name)
     subprocess.run(['rm', loc + 'A-6_DegenGeom.csv'])
     if not DRYRUN:
        subprocess.run(['rm', loc + 'A-6_DegenGeom.history'])
@@ -149,11 +170,14 @@ def generate(loc, vspfile, name, manual=False, pos=0):
 print('Dryrun:', DRYRUN)
 print('Cleanup:', CLEANUP)
 
-for case in ['base', 'stab']:
+for case in ['est', 'base', 'stab']:
     if params[case + '_file'] + params['vsp3_file'][:-5] not in progress['completed']:
         with open(params[case + '_file'] + 'A-6_DegenGeom.vspaero', 'w') as bf:
             for p in baseprops.keys():
-                bf.write(p + ' = ' + baseprops[p] + ' \n')
+                if case == 'est':
+                    bf.write(p + ' = ' + est_baseprops[p] + ' \n')
+                else:
+                    bf.write(p + ' = ' + baseprops[p] + ' \n')
             for p in configprops['base'].keys():
                 bf.write(p + ' = ' + configprops['base'][p] + ' \n')
             for p in postprops.keys():
@@ -163,10 +187,11 @@ for case in ['base', 'stab']:
         generate(params[case + '_file'], params['vsp3_file'], case)
 
         # run the solver
-        if not DRYRUN:
+        if not DRYRUN or case == 'est':
             print('running: ' + case)
-            subprocess.run(['date'])
-            if case == 'base':
+            if case == 'est':
+                start_time = time.localtime()
+            if case != 'stab':
                 if VERBOSE:
                     subprocess.run(['bash', './run.sh', params[case + '_file'], nproc])
                 else:
@@ -178,7 +203,20 @@ for case in ['base', 'stab']:
                 else:
                     subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc],
                                    stdout=subprocess.DEVNULL)
-            progress['cases'].append(params[case + '_file'] + params['vsp3_file'][:-5])
+            progress['completed'].append(params[case + '_file'] + params['vsp3_file'][:-5])
+
+            # Calculate ETA
+            if case == 'est':
+                end_time = time.localtime()
+                t = end_time.tm_hour - start_time.tm_hour
+                t += (end_time.tm_min - start_time.tm_min) / 60
+                t += (end_time.tm_sec - start_time.tm_sec) / 3600
+                # number of cases:
+                n = 7 # stability, base
+                for i in params['files'].values():
+                    n += len(i)
+                n = n * len(baseprops['Mach'].split(', ')) * len(baseprops['AoA'].split(', ')) * len(baseprops['Beta'].split(', '))
+                print('##### ETA: ' + str(round(t * n, 1)) + ' hours #####')
 
 for run in params['files']:
     for case in params['files'][run]:
@@ -214,7 +252,7 @@ for run in params['files']:
                     subprocess.run(['bash', './run.sh', case, nproc],
                                    stdout=subprocess.DEVNULL)
 
-            progress['cases'].append(params[case + '_file'] + params['vsp3_file'][:-5])
+            progress['completed'].append(case + params['vsp3_file'][:-5])
 print('FINISHED')
 subprocess.run(['date'])
 progress['done'] = True

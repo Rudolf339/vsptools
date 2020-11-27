@@ -2,6 +2,7 @@
     "elevator": [
         "./output/elevator/-24/",
         "./output/elevator/-9.5/",
+        "./output/elevator/-3.945/",
         "./output/elevator/1.5/"
     ],
     "flaps": [
@@ -27,6 +28,7 @@
         "./output/speedbrake/60/"
     ]},
   "base_file": "./output/base/",
+  "est_file": "./output/est/",
   "output_file": "./output/A-6E_vspaero.xml",
   "stab_file": "./output/stab/",
   "vsp3_file": "A-6.vsp3",
