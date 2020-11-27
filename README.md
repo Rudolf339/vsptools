@@ -27,7 +27,10 @@ options:
 		
 	-d
 		dryrun, all files are generated but vspaero isn't executed
-		
+	-h 
+		high-res run
+	-m
+		medium-res run
 	-c
 		cleanup, removes files that are later not used. Can save large amounts
 		of storage, .adb files in particular can make up ~90% of the used
@@ -35,6 +38,8 @@ options:
 		
 	-v
 		verbose, also writes out .vsp3 for every case
+	--progressfile=progressfile.json
+		continue from where last session was interrupted
 		
 generates .cvs, vspaero files and runs vspaero based on the parameters defined
 in `runparams.json` - see included example.
