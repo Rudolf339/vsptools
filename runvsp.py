@@ -16,6 +16,7 @@ progress = {
     "done": "False",
     "dryrun": "False",
     "verbose": "False",
+    "cleanup": "False",
     "nproc": 2,
     "wake": 3,
     "completed": []
@@ -169,6 +170,7 @@ def generate(loc, vspfile, name, manual=False, pos=0):
 
 print('Dryrun:', DRYRUN)
 print('Cleanup:', CLEANUP)
+STARTTIME = time.localtime()
 
 for case in ['est', 'base', 'stab']:
     if params[case + '_file'] + params['vsp3_file'][:-5] not in progress['completed']:
@@ -191,6 +193,7 @@ for case in ['est', 'base', 'stab']:
             print('running: ' + case)
             if case == 'est':
                 start_time = time.localtime()
+            subprocess.run(['date'])
             if case != 'stab':
                 if VERBOSE:
                     subprocess.run(['bash', './run.sh', params[case + '_file'], nproc])
@@ -216,7 +219,8 @@ for case in ['est', 'base', 'stab']:
                 for i in params['files'].values():
                     n += len(i)
                 n = n * len(baseprops['Mach'].split(', ')) * len(baseprops['AoA'].split(', ')) * len(baseprops['Beta'].split(', '))
-                print('##### ETA: ' + str(round(t * n, 1)) + ' hours #####')
+                ETA = round(t * n, 1)
+                print('##### ETA:', ETA, 'hours #####')
 
 for run in params['files']:
     for case in params['files'][run]:
@@ -255,6 +259,12 @@ for run in params['files']:
             progress['completed'].append(case + params['vsp3_file'][:-5])
 print('FINISHED')
 subprocess.run(['date'])
+print('ETA was:', ETA, 'hours')
 progress['done'] = True
+end_time = time.localtime()
+t = end_time.tm_hour - start_time.tm_hour
+t += (end_time.tm_min - start_time.tm_min) / 60
+t += (end_time.tm_sec - start_time.tm_sec) / 3600
+print('Actual processing time:', round(t, 1), 'hours')  
 with open(progressfile, 'w+') as jf:
     jf.write(json.dumps(progress, sort_keys=True, indent=4))
