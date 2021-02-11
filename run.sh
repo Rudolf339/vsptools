@@ -1,1 +1,1 @@
-cd $1 ; ls -lsa; /usr/bin/openvsp/vspaero -omp $2 A-6_DegenGeom;
+cd $1 ; ls -lsa; /usr/bin/vspaero -omp $2 A-6_DegenGeom;

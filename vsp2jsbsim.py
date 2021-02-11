@@ -143,7 +143,7 @@ for datapoint in outputData.keys():
     print('#####', datapoint)
     of.write('  <!-- ' + datapoint.upper() + ' -->\n')
     for run in outputData[datapoint].keys():
-        dprint(run)
+        print('-', run)
         of.write('  <!-- ' + run + ' -->\n')
         for pos in outputData[datapoint][run].keys():
             betas = []
@@ -384,10 +384,11 @@ for i in data:
     match = false
 
 output_coeffs = {
-    # not included are: cmma, cmmb, cmnb
+    # not included are: cmmb, cmnb
     'cmlp': ['Roll damping derivative', 'aero/pb'],
     'cmlr': ['Roll moment due to yaw rate', 'aero/rb'],
     'cmmq': ['Pitch damping derivative', 'aero/qb'],
+    'cmma': ['Pitch moment alpha dot', 'aero/alphadot-rad_sec'],
     'cmnp': ['Yaw moment due to roll rate', 'aero/pb'],
     'cmnr': ['Yaw damping derivative', 'aero/rb'],
     'cfyp': ['Side force due to roll rate', 'aero/pb'],

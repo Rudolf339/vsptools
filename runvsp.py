@@ -9,7 +9,7 @@ CLEANUP = False
 VERBOSE = False
 HIGHRES = False
 MEDRES = False
-nproc = 1
+nproc = '1'
 wake = 3
 progress = {
     "isused": "False",
@@ -67,12 +67,12 @@ for b in range(-5, 6):
 beta = beta + "10, 20"
 
 if not HIGHRES:
-    mach = '0.2, 0.5, 0.9'
+    mach = '0.2, 0.4, 0.5, 0.7, 0.9'
     if MEDRES:
         aoa = '-10.0, -5.0, 0.001, 5.0, 10.0, 15.0, 20.0,  25.0, 30.0, 40.0, 50.0, 60'
     else:
         aoa = '-10.0, 0.001, 10.0, 20.0, 30.0, 40.0, 50, 60'
-    beta = '-10.0, 0.0, 10.0'
+    beta = '-10.0, -5.0, 0.0, 5.0, 10.0'
 
 print('Mach:', mach + '!')
 print('AoA:', aoa + '!')
@@ -95,7 +95,7 @@ baseprops = {"Sref": "45.692500",
              "Symmetry": "NO",
              "FarDist": "-1.000000",
              "NumWakeNodes": "0",
-}
+             }
 baseprops["WakeIters"] = str(wake)
 configprops = {"base": {"NumberOfControlGroups": "0"}}
 
@@ -108,7 +108,7 @@ for i in baseprops.keys():
         est_baseprops['Mach'] = '0.4'
     elif i == 'AoA':
         est_baseprops['AoA'] = '5'
-    elif i  == 'Beta':
+    elif i == 'Beta':
         est_baseprops['Beta'] = '0'
     else:
         est_baseprops[i] = baseprops[i]
@@ -130,9 +130,9 @@ def generate(loc, vspfile, name, manual=False, pos=0):
         name = params['surf_names'][name]
     subprocess.run(['rm', loc + 'A-6_DegenGeom.csv'])
     if not DRYRUN:
-       subprocess.run(['rm', loc + 'A-6_DegenGeom.history'])
-       if 'stab' in loc:
-           subprocess.run(['rm', loc + 'A-6_DegenGeom.stab'])
+        subprocess.run(['rm', loc + 'A-6_DegenGeom.history'])
+        if 'stab' in loc:
+            subprocess.run(['rm', loc + 'A-6_DegenGeom.stab'])
 
     # generate new vspaero input
     vsp.ReadVSPFile(vspfile)
@@ -215,7 +215,7 @@ for case in ['est', 'base', 'stab']:
                 t += (end_time.tm_min - start_time.tm_min) / 60
                 t += (end_time.tm_sec - start_time.tm_sec) / 3600
                 # number of cases:
-                n = 7 # stability, base
+                n = 7  # stability, base
                 for i in params['files'].values():
                     n += len(i)
                 n = n * len(baseprops['Mach'].split(', ')) * len(baseprops['AoA'].split(', ')) * len(baseprops['Beta'].split(', '))
@@ -265,6 +265,6 @@ end_time = time.localtime()
 t = end_time.tm_hour - start_time.tm_hour
 t += (end_time.tm_min - start_time.tm_min) / 60
 t += (end_time.tm_sec - start_time.tm_sec) / 3600
-print('Actual processing time:', round(t, 1), 'hours')  
+print('Actual processing time:', round(t, 1), 'hours')
 with open(progressfile, 'w+') as jf:
     jf.write(json.dumps(progress, sort_keys=True, indent=4))
