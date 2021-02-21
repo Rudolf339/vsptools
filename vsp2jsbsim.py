@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
 # tool to convert VSPaero CL and CD output to tables for JSBSim
 
-import json, sys
+import json
+import sys
 
 
 def dprint(t, msg=''):

@@ -1,4 +1,8 @@
-import json, subprocess, sys, signal, time
+import json
+import subprocess
+import sys
+import signal
+import time
 from openvsp import vsp
 
 with open('./runparams.json', 'r') as p:
@@ -21,6 +25,7 @@ progress = {
     "wake": 3,
     "completed": []
 }
+
 progressfile = 'progress.json'
 for arg in sys.argv:
     if arg.startswith('-'):
@@ -69,10 +74,11 @@ beta = beta + "10, 20"
 if not HIGHRES:
     mach = '0.2, 0.4, 0.5, 0.7, 0.9'
     if MEDRES:
-        aoa = '-10.0, -5.0, 0.001, 5.0, 10.0, 15.0, 20.0,  25.0, 30.0, 40.0, 50.0, 60'
+        aoa = '-10.0, -5.0, 0.001, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 40, 50, 60'
+        beta = '-10.0, -5.0, 0.0, 5.0, 10.0'
     else:
-        aoa = '-10.0, 0.001, 10.0, 20.0, 30.0, 40.0, 50, 60'
-    beta = '-10.0, -5.0, 0.0, 5.0, 10.0'
+        aoa = '-10.0, 0.001, 10.0, 20.0, 30.0, 40, 50, 60'
+        beta = '-10.0, 0.0, 10.0'
 
 print('Mach:', mach + '!')
 print('AoA:', aoa + '!')
@@ -113,17 +119,22 @@ for i in baseprops.keys():
     else:
         est_baseprops[i] = baseprops[i]
 
+
 def interrupthandler(signal, frame):
     if progress['isused']:
         with open(progressfile, 'w+') as jf:
             jf.write(json.dumps(progress, sort_keys=True, indent=4))
         exit(0)
 
+
 signal.signal(signal.SIGINT, interrupthandler)
+
 
 def vprint(t):
     if VERBOSE:
         print(t)
+
+
 def generate(loc, vspfile, name, manual=False, pos=0):
     # remove old outputs
     if name in params['surf_names']:
@@ -155,7 +166,7 @@ def generate(loc, vspfile, name, manual=False, pos=0):
                 vsp.DeleteSubSurf(n)
             else:
                 vprint(name + ' ' + vsp.GetSubSurfName(n))
-    
+
     print('witing out', loc + vspfile[:-5] + '_DegenGeom.csv')
     vsp.ComputeDegenGeom(vsp.SET_ALL, vsp.DEGEN_GEOM_CSV_TYPE)
     if VERBOSE:
@@ -168,12 +179,14 @@ def generate(loc, vspfile, name, manual=False, pos=0):
         for ext in ['adb', 'adb.cases', 'fem', 'group.1', 'lod', 'polar']:
             subprocess.run(['rm', fn + ext])
 
+
 print('Dryrun:', DRYRUN)
 print('Cleanup:', CLEANUP)
 STARTTIME = time.localtime()
 
 for case in ['est', 'base', 'stab']:
-    if params[case + '_file'] + params['vsp3_file'][:-5] not in progress['completed']:
+    if (params[case + '_file'] + params['vsp3_file'][:-5]
+            not in progress['completed']):
         with open(params[case + '_file'] + 'A-6_DegenGeom.vspaero', 'w') as bf:
             for p in baseprops.keys():
                 if case == 'est':

@@ -4,7 +4,7 @@
 
 import numpy as np
 import math
-from fluids import ATMOSPHERE_1976 as atmoshphere
+from fluids import ATMOSPHERE_1976 as atmosphere
 import matplotlib.pyplot as pyplot
 import copy
 import sys
@@ -78,7 +78,7 @@ class table:
         return aoa
 
     def findLift(self, mach, lift, thrust):
-        q = 0.5 * gamma * atmoshphere(alt).P * (mach ** 2)
+        q = 0.5 * gamma * atmosphere(alt).P * (mach ** 2)
         low = self.aoa[0]
         high = self.aoa[-1]
         while True:
@@ -98,13 +98,13 @@ class table:
 
 
 def neededAoA(mach, alt):
-    q = 0.5 * gamma * atmoshphere(alt).P * (mach ** 2)
+    q = 0.5 * gamma * atmosphere(alt).P * (mach ** 2)
     cl = (m * g) / (q * A)
     return CL.findAoA(mach, cl)
 
 
 def getDrag(aoa, mach, alt):
-    q = 0.5 * gamma * atmoshphere(alt).P * (mach ** 2)
+    q = 0.5 * gamma * atmosphere(alt).P * (mach ** 2)
     return q * A * CDtot.getValue(aoa, mach)
 
 
@@ -143,7 +143,7 @@ for alt in error_table.keys():
     for n in range(len(error_table[alt])):
         error_table[alt][n][1] = -1
 for alt in milaccel.keys():
-    local_mach = atmoshphere(alt * 0.3048).v_sonic
+    local_mach = atmosphere(alt * 0.3048).v_sonic
     v = milaccel[alt][0][0]
     t = 0
     dv = 9999

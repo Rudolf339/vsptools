@@ -1,6 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import matplotlib.pyplot as pyplot
-import numpy, sys, json
+import sys
+import json
 
 wake_iterations = 3
 
@@ -45,6 +46,7 @@ for arg in sys.argv:
     elif arg.startswith('-w'):
         WING = [int(a) for a in arg[2:].split(',')]
 
+
 def getdata(line):
     while '  ' in line:
         line = line.replace('  ', ' ')
@@ -57,10 +59,11 @@ def getdata(line):
     for l in line2:
         try:
             final.append(float(l))
-        except ValueError as e:
+        except ValueError:
             if l != '':
                 final.append(l)
     return line2
+
 
 collect_w = False
 collect_c = False
@@ -126,16 +129,19 @@ for i in range(len(db)):
         if yres != []:
             for k in yres.keys():
                 pyplot.plot(xres[k], yres[k],
-                            label=txt + ' wing=' + str(db_comp[i][int(k) - 1]['compname']))
+                            label=(txt + ' wing=' +
+                                   str(db_comp[i][int(k) - 1]['compname'])))
 
     yres = dict()
     xres = dict()
+
 
 def nth(ls, n):
     out = []
     for i in range(len(ls)):
         if i % n == 0:
             out.append(ls[i])
+
 
 N = 100
 pyplot.xlabel(X)
