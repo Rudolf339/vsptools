@@ -1,3 +1,4 @@
+#!./vsp-venv/bin/python3
 import json
 import subprocess
 import sys
@@ -13,6 +14,7 @@ CLEANUP = False
 VERBOSE = False
 HIGHRES = False
 MEDRES = False
+FORCE = False
 nproc = '1'
 wake = 3
 progress = {
@@ -39,6 +41,8 @@ for arg in sys.argv:
             HIGHRES = True
         if 'm' in arg:
             MEDRES = True
+        if 'f' in arg:
+            FORCE = True
     if arg.startswith('-j'):
         nproc = arg[2:]
     if arg.startswith('-w'):
@@ -47,9 +51,9 @@ for arg in sys.argv:
         progressfile = arg[15:]
         with open(progressfile) as pf:
             progress = json.loads(pf.read())
-        DRYRUN = progress['dryrun']
-        CLEANUP = progress['cleanup']
-        VERBOSE = progress['verbose']
+        # DRYRUN = progress['dryrun']
+        # CLEANUP = progress['cleanup']
+        # VERBOSE = progress['verbose']
         progress['isused'] = True
 
 if progress['completed'] == []:
@@ -77,16 +81,16 @@ if not HIGHRES:
         aoa = '-10.0, -5.0, 0.001, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 40, 50, 60'
         beta = '-10.0, -5.0, 0.0, 5.0, 10.0'
     else:
-        aoa = '-10.0, 0.001, 10.0, 20.0, 30.0, 40, 50, 60'
+        aoa = '-10.0, 0.001, 10.0, 20.0, 30.0, 40, 50'
         beta = '-10.0, 0.0, 10.0'
 
 print('Mach:', mach + '!')
 print('AoA:', aoa + '!')
 print('Beta:', beta + '!')
 
-baseprops = {"Sref": "45.692500",
-             "Cref": "3.618333",
-             "Bref": "14.540000",
+baseprops = {"Sref": "49.1",
+             "Cref": "3.2569",
+             "Bref": "15.54",
              "X_cg": "1.846",
              "Y_cg": "0.000",
              "Z_cg": "0.000",
@@ -140,7 +144,7 @@ def generate(loc, vspfile, name, manual=False, pos=0):
     if name in params['surf_names']:
         name = params['surf_names'][name]
     subprocess.run(['rm', loc + 'A-6_DegenGeom.csv'])
-    if not DRYRUN:
+    if not DRYRUN and False:
         subprocess.run(['rm', loc + 'A-6_DegenGeom.history'])
         if 'stab' in loc:
             subprocess.run(['rm', loc + 'A-6_DegenGeom.stab'])
@@ -187,8 +191,14 @@ STARTTIME = time.localtime()
 for case in ['est', 'base', 'stab']:
     if (params[case + '_file'] + params['vsp3_file'][:-5]
             not in progress['completed']):
+        nochange = True
+        with open(params[case + '_file'] + 'A-6_DegenGeom.vspaero') as f:
+            old = f.readlines()
+    
         with open(params[case + '_file'] + 'A-6_DegenGeom.vspaero', 'w') as bf:
             for p in baseprops.keys():
+                if p == 'ClMax' and case in params['CLmax']:
+                    bf.write(p + " = " + params['CLmax'][case] + " \n")
                 if case == 'est':
                     bf.write(p + ' = ' + est_baseprops[p] + ' \n')
                 else:
@@ -198,42 +208,56 @@ for case in ['est', 'base', 'stab']:
             for p in postprops.keys():
                 bf.write(p + ' = ' + postprops[p] + ' \n')
 
+        with open(params[case + '_file'] + 'A-6_DegenGeom.vspaero') as f:
+            new = f.readlines()
+        if new != old:
+            nochange = False
+
+        with open(params[case + '_file'] + 'A-6_DegenGeom.csv') as f:
+            old = f.readlines()
         # re-generate DegenGeom
         generate(params[case + '_file'], params['vsp3_file'], case)
+        with open(params[case + '_file'] + 'A-6_DegenGeom.csv') as f:
+            new = f.readlines()
+        if new != old or case == 'est':
+            nochange = False
 
-        # run the solver
-        if not DRYRUN or case == 'est':
-            print('running: ' + case)
-            if case == 'est':
-                start_time = time.localtime()
-            subprocess.run(['date'])
-            if case != 'stab':
-                if VERBOSE:
-                    subprocess.run(['bash', './run.sh', params[case + '_file'], nproc])
+        if not nochange or FORCE:
+            # run the solver
+            if not DRYRUN or case == 'est':
+                print('running: ' + case)
+                if case == 'est':
+                    start_time = time.localtime()
+                subprocess.run(['date'])
+                if case != 'stab':
+                    if VERBOSE:
+                        subprocess.run(['bash', './run.sh', params[case + '_file'], nproc])
+                    else:
+                        subprocess.run(['bash', './run.sh', params[case + '_file'], nproc],
+                                       stdout=subprocess.DEVNULL)
                 else:
-                    subprocess.run(['bash', './run.sh', params[case + '_file'], nproc],
-                                   stdout=subprocess.DEVNULL)
-            else:
-                if VERBOSE:
-                    subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc])
-                else:
-                    subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc],
-                                   stdout=subprocess.DEVNULL)
-            progress['completed'].append(params[case + '_file'] + params['vsp3_file'][:-5])
+                    if VERBOSE:
+                        subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc])
+                    else:
+                        subprocess.run(['bash', './runstab.sh', params[case + '_file'], nproc],
+                                       stdout=subprocess.DEVNULL)
+                progress['completed'].append(params[case + '_file'] + params['vsp3_file'][:-5])
 
-            # Calculate ETA
-            if case == 'est':
-                end_time = time.localtime()
-                t = end_time.tm_hour - start_time.tm_hour
-                t += (end_time.tm_min - start_time.tm_min) / 60
-                t += (end_time.tm_sec - start_time.tm_sec) / 3600
-                # number of cases:
-                n = 7  # stability, base
-                for i in params['files'].values():
-                    n += len(i)
-                n = n * len(baseprops['Mach'].split(', ')) * len(baseprops['AoA'].split(', ')) * len(baseprops['Beta'].split(', '))
-                ETA = round(t * n, 1)
-                print('##### ETA:', ETA, 'hours #####')
+                # Calculate ETA
+                if case == 'est':
+                    end_time = time.localtime()
+                    t = end_time.tm_hour - start_time.tm_hour
+                    t += (end_time.tm_min - start_time.tm_min) / 60
+                    t += (end_time.tm_sec - start_time.tm_sec) / 3600
+                    # number of cases:
+                    n = 7  # stability, base
+                    for i in params['files'].values():
+                        n += len(i)
+                    n = n * len(baseprops['Mach'].split(', ')) * len(baseprops['AoA'].split(', ')) * len(baseprops['Beta'].split(', '))
+                    ETA = round(t * n, 1)
+                    print('##### ETA:', ETA, 'hours #####')
+        else:
+            print(case, 'needed no re-compute')
 
 for run in params['files']:
     for case in params['files'][run]:
@@ -250,25 +274,39 @@ for run in params['files']:
             for l in range(len(baseprops), len(vsp_txt)):
                 output.append(vsp_txt[l])
 
+            nochange = True
+            with open(case + 'A-6_DegenGeom.vspaero') as f:
+                old = f.readlines()
             with open(case + 'A-6_DegenGeom.vspaero', 'w') as of:
                 for t in output:
                     of.write(t)
+            with open(case + 'A-6_DegenGeom.vspaero') as f:
+                new = f.readlines()
+            if new != old:
+                nochange = False
 
+            with open(case + 'A-6_DegenGeom.csv') as f:
+                old = f.readlines()
             if run not in params['manual_set'].keys():
                 generate(case, params['vsp3_file'], run)
             else:
                 generate(case, params['vsp3_file'], params['manual_set'][run],
                          True, case.split('/')[len(case.split('/')) - 2])
-
-            if not DRYRUN:
-                print('running: ' + case)
-                subprocess.run(['date'])
-                if VERBOSE:
-                    subprocess.run(['bash', './run.sh', case, nproc])
-                else:
-                    subprocess.run(['bash', './run.sh', case, nproc],
-                                   stdout=subprocess.DEVNULL)
-
+            with open(case + 'A-6_DegenGeom.csv') as f:
+                new = f.readlines()
+            if new != old:
+                nochange = False
+            if not nochange or FORCE:
+                if not DRYRUN:
+                    print('running: ' + case)
+                    subprocess.run(['date'])
+                    if VERBOSE:
+                        subprocess.run(['bash', './run.sh', case, nproc])
+                    else:
+                        subprocess.run(['bash', './run.sh', case, nproc],
+                                       stdout=subprocess.DEVNULL)
+            else:
+                print(case, 'needed no re-compute')
             progress['completed'].append(case + params['vsp3_file'][:-5])
 print('FINISHED')
 subprocess.run(['date'])
