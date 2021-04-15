@@ -144,9 +144,9 @@ def plotter(first, second, name1, name2):
 if X == 'AoA':
     plotter(cases['Mach'][1], cases['beta'][1], 'Mach', 'beta')
 elif X == 'Mach':
-    plotter(cases['Aoa'][1], cases['beta'][1], 'AoA', 'beta')
+    plotter(cases['AoA'][1], cases['beta'][1], 'AoA', 'beta')
 elif X == 'beta':
-    plotter(cases['Aoa'][1], cases['Mach'][1], 'AoA', 'Mach')
+    plotter(cases['AoA'][1], cases['Mach'][1], 'AoA', 'Mach')
 elif TYPE == 'lod':
     print('lod')
     plotter(cases['wing'][1], [''], 'wing', '')
