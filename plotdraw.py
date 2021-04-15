@@ -38,6 +38,7 @@ AOA = None
 MACH = None
 BETA = None
 WING = None
+HEADLESS = False
 for arg in sys.argv:
     if arg.startswith('-x'):
         X = arg[2:]
@@ -51,6 +52,8 @@ for arg in sys.argv:
         BETA = float(arg[2:])
     elif arg.startswith('-w'):
         WING = float(arg[2:])
+    elif arg == '-h':
+        HEADLESS = True
 
 
 def getdata(line):
@@ -133,6 +136,8 @@ def plotter(first, second, name1, name2):
                     pyplot.plot(xres, yres, label=name1 + '=' + str(f))
                 else:
                     pyplot.plot(xres, yres, label=name1 + '=' + str(f)  + ' ' + name2 + '=' + str(s))
+                if HEADLESS:
+                    print(str(xres) + ', ' + str(yres))
         if second is ['']:
             break
 
@@ -149,4 +154,5 @@ elif TYPE == 'lod':
 pyplot.xlabel(X)
 pyplot.ylabel(Y)
 pyplot.legend()
-pyplot.show()
+if not HEADLESS:
+    pyplot.show()
